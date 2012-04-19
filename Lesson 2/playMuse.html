@@ -1,0 +1,275 @@
+<!doctype html>
+
+<html> 
+
+<!-- 
+    A tool for listening to the MUS melodies.(eventually)  
+   Copied all of the code for playing the sounds in browsers that support audio tag and data uri from 
+   a file attached to Chromium issue# 39713 url = http://code.google.com/p/chromium/issues/detail?id=39713 originally posted by 
+   Minor modifications have been made because the tone output by the code seemed to be half the pitch it was supposed to be according the sound coming out of the spearkers.  
+
+   some docs on wav format: https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
+-->
+
+<head>
+   <title>JavaScript Tone Generator/"MUS" Compiler</title>
+   <SCRIPT TYPE="text/javascript" src="MUS.js"></SCRIPT>
+   <script>
+       var musHelper = new MUS();
+
+   var keyStr = "ABCDEFGHIJKLMNOP" +
+                "QRSTUVWXYZabcdef" +
+                "ghijklmnopqrstuv" +
+                "wxyz0123456789+/" +
+                "=";
+
+   function encode64(input) {
+      var output = "";
+      var chr1, chr2, chr3 = "";
+      var enc1, enc2, enc3, enc4 = "";
+      var i = 0;
+
+      do {
+         chr1 = input.charCodeAt(i++);
+         chr2 = input.charCodeAt(i++);
+         chr3 = input.charCodeAt(i++);
+
+         enc1 = chr1 >> 2;
+         enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+         enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+         enc4 = chr3 & 63;
+
+         if (isNaN(chr2)) {
+            enc3 = enc4 = 64;
+         } else if (isNaN(chr3)) {
+            enc4 = 64;
+         }
+
+         output = output +
+            keyStr.charAt(enc1) +
+            keyStr.charAt(enc2) +
+            keyStr.charAt(enc3) +
+            keyStr.charAt(enc4);
+         chr1 = chr2 = chr3 = "";
+         enc1 = enc2 = enc3 = enc4 = "";
+      } while (i < input.length);
+
+      return output;
+   }
+
+   function decode64(input) {
+      var output = "";
+      var chr1, chr2, chr3 = "";
+      var enc1, enc2, enc3, enc4 = "";
+      var i = 0;
+
+      // remove all characters that are not A-Z, a-z, 0-9, +, /, or =
+      var base64test = /[^A-Za-z0-9\+\/\=]/g;
+      if (base64test.exec(input)) {
+         alert("There were invalid base64 characters in the input text.\n" +
+               "Valid base64 characters are A-Z, a-z, 0-9, ?+?, ?/?, and ?=?\n" +
+               "Expect errors in decoding.");
+      }
+      input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+
+      do {
+         enc1 = keyStr.indexOf(input.charAt(i++));
+         enc2 = keyStr.indexOf(input.charAt(i++));
+         enc3 = keyStr.indexOf(input.charAt(i++));
+         enc4 = keyStr.indexOf(input.charAt(i++));
+
+         chr1 = (enc1 << 2) | (enc2 >> 4);
+         chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+         chr3 = ((enc3 & 3) << 6) | enc4;
+
+         output = output + String.fromCharCode(chr1);
+
+         if (enc3 != 64) {
+            output = output + String.fromCharCode(chr2);
+         }
+         if (enc4 != 64) {
+            output = output + String.fromCharCode(chr3);
+         }
+
+         chr1 = chr2 = chr3 = "";
+         enc1 = enc2 = enc3 = enc4 = "";
+
+      } while (i < input.length);
+
+      return output;
+   }
+   
+   function str_from_dword(dw)
+   {
+      return String.fromCharCode(dw&0xFF,dw>>8&0xFF,dw>>16&0xFF,dw>>24&0xFF);
+   }
+   
+   function str_from_word(w)
+   {
+      return String.fromCharCode(w&0xFF,w>>8&0xFF);
+   }
+   
+   function str_from_byte(b)
+   {
+      return String.fromCharCode(b&0xFF);
+   }
+
+   function GetTotalLengthInSeconds(museExpr) {
+      return musHelper.endTime(0, museExpr) / 1000;
+   }
+
+   function getFreqFromSpn(SPN){
+                                                                                    
+      var notePositionHash = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].reduce(function(hash,str){hash.count++; hash[str] = hash.count; return hash; }, {count:0}); // maybe just use indexOf?
+      var lowestC_Hz = 16.352;
+
+      var octaveDiff = parseInt( parseInt(SPN.split('').reverse().join('')).toString().split('').reverse().join(''));
+      var notepart = SPN.substr(0, SPN.length - octaveDiff.toString().length);
+      notepart = notepart.toUpperCase();
+      var centsPerNote = 100; 
+      var centDif = ((octaveDiff*notePositionHash.count) + (notePositionHash[notepart] - notePositionHash.C )) * centsPerNote;
+      
+      return lowestC_Hz * Math.pow(2,(centDif / 1200) );
+   }
+
+   /*
+    For any parlel notes, avg their freqs while the notes overlap (probably won't sound good as harmony != freq avg)
+    and store freqs in the note intsead of spn.
+
+    TODO?: support different notes on different channels
+   */
+   function reformatNotes_FreqAvgPerStartTimeForDuration(notes)
+   {
+        var formattedNotes = [];
+        var notesObj = notes.reduce(function (newNotes, note){
+                        newNotes[note.start] === undefined ? newNotes[note.start] = [] : null ;
+                        newNotes[note.start].push(note);
+
+                        newNotes.startTimes.indexOf(note.start) == -1 ? newNotes.startTimes.push(note.start): null; //record new startTimes
+
+                        return newNotes;
+                    },{startTimes:[]});
+
+        notesObj.startTimes = notesObj.startTimes.sort();
+
+        var curStartTime;
+
+        for (var i = 0; i < notesObj.startTimes.length; i++) {
+            curStartTime = notesObj.startTimes[i];
+
+            //if more than one note has the same start time
+            if(notesObj[curStartTime].length > 1){
+                //Iterate through the notes and make a new note for every different duration, STARTING in order from shortest to longest duration.
+                //Each time a note is created, avg the freqs together of all the notes after and including the current one in the array.
+                notesObj[curStartTime].sort(function(a,b){return a.dur - b.dur;});
+
+                var lastDur = NaN;
+
+                for (var j = 0; j < notesObj[curStartTime].length; j++) {
+
+                    var curDuration = notesObj[curStartTime][j].dur;
+                    
+                    if(curDuration != lastDur) {
+                        lastDur = curDuration
+                        var avgFreq = 0;
+                        for (var k = j; k < notesObj[curStartTime].length; k++) {
+                            avgFreq += getFreqFromSpn(notesObj[curStartTime][k].pitch);
+                        }
+
+                        avgFreq = avgFreq / (notesObj[curStartTime].length - j);
+                        
+                        if(j>0){ //make each succesive note smaller so that together they take up the same space
+                            formattedNotes.push({ tag: 'note',
+                                start: curStartTime + notesObj[curStartTime][j - 1].dur,
+                                dur: (curDuration - notesObj[curStartTime][j - 1].dur),
+                                pitch: avgFreq
+                            });
+                        }else{
+                            formattedNotes.push({ tag: 'note',
+                                start: curStartTime,
+                                dur: (curDuration),
+                                pitch: avgFreq 
+                            });
+                        }
+                    }
+                }
+
+            }else{
+                //write just the one note
+                formattedNotes.push({ tag: 'note', start: curStartTime, dur: notesObj[curStartTime][0].dur, pitch: getFreqFromSpn(notesObj[curStartTime][0].pitch) })
+            }
+
+        }
+
+        return formattedNotes.map(function (note) { note.dur = note.dur / 1000; return note; });
+   }
+
+   function genaudio()
+   {
+
+       var strExpr = " var MuseExpr = " + document.getElementById("MusCode").value;
+       eval( strExpr);
+       var lengthInSeconds = GetTotalLengthInSeconds(MuseExpr); //endTime gives miliseconds
+       var MuseNotes = musHelper.compile(MuseExpr); //not optimized/formatted for Paralel notes to actually be played
+       console.log(MuseNotes);
+      
+
+      var NotesReadyToBePlayed = reformatNotes_FreqAvgPerStartTimeForDuration(MuseNotes);
+      console.log(NotesReadyToBePlayed);
+
+      //var freq = 2*document.getElementById("freq").value-0; //seems to need to be multiplied by 2 so other math might be off somewhere
+      var output = "RIFF"; //chunkID
+      output+=str_from_dword(88200*lengthInSeconds+36); //chunk size
+      output+="WAVE"; //format
+      output+="fmt "; //subchunkID
+      output+=str_from_dword(16); //subchunk size
+      output+=str_from_word(1); //Audio Format PCM=1
+      output+=str_from_word(1); //Num of Channels
+      output+=str_from_dword(44100); //Sample rate
+      output+=str_from_dword(88200); //Byte rate = SampleRate*NumChannels*BitsPerSample/8 (could be off)
+      output+=str_from_word(4); /* BlockAlign = NumChannels * BitsPerSample/8
+                               The number of bytes for one sample including
+                               all channels. (might also be off)*/ 
+      output+=str_from_word(16);
+      output+="data";
+      output+=str_from_dword(88200*lengthInSeconds);
+
+      //TODO?: support different notes on different channels
+      function writeNoteToOutput( output, noteReadyToBePlayed) 
+      {
+          for (var i = 0; i < 44100 * (noteReadyToBePlayed.dur) / 2; i++)
+         {
+             //output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.pitch * 2 /*pitch bug fix*/) * 32760));
+             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.pitch  /*pitch bug fix*/) * 32760));
+             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.pitch  /*pitch bug fix*/) * 32760));
+         }
+         return output;
+      }
+
+      output += NotesReadyToBePlayed.reduce(writeNoteToOutput, output);
+      document.getElementById("audio").innerHTML=("<audio id=\"player\" src=\"data:audio/x-wav;base64,"+encode64(output)+"\">");
+      document.getElementById("player").play();
+   }
+   </script>
+</head>
+<body>
+
+   Mus goes here: <textarea id="MusCode" style="width:600px;height:300px;">
+   { tag: 'seq',
+      left: 
+       { tag: 'par',
+         left: { tag: 'note', pitch: 'c3', dur: 250 },
+         right: { tag: 'note', pitch: 'g4', dur: 500 } },
+      right:
+       { tag: 'par',
+         left: { tag: 'note', pitch: 'd3', dur: 500 },
+         right: { tag: 'note', pitch: 'f4', dur: 250 } } };
+   </textarea>
+   <br>
+   
+   <button onclick="genaudio()">Make Sounds!</button>
+   <div id="audio"></div>
+
+</body>
+</html>
+
