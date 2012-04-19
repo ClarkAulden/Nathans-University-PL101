@@ -1,6 +1,7 @@
 function MUS() {
+    var self = this;
     /*endtime with par in mind*/
-    this.endTime = function (time, expr) {
+    self.endTime = function (time, expr) {
         // your code here
         if(expr.tag === 'note')
         {return time + expr.dur;}
@@ -18,22 +19,22 @@ function MUS() {
     };
 
     /*par compile*/
-    this.compile = function (musexpr) {
+    self.compile = function (musexpr) {
         // your code here
 
         var noteArr = function(musexpr, startTime){
             if(musexpr.tag === 'note')
             {
-                musexpr.start = startTime; console.log(musexpr + "note");
+                musexpr.start = startTime; //console.log(musexpr + "note");
                return [].concat(musexpr);
             }else
             {
                 if(musexpr.tag ==='par'){
-                    console.log(musexpr); console.log(" starttime: " + startTime + " par "); 
+                    //console.log(musexpr); console.log(" starttime: " + startTime + " par "); 
                      return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, startTime));
                 }else{
-                    console.log(musexpr); console.log(" starttime: " + startTime + " seq");
-                    return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, endTime(startTime, musexpr.left)));
+                    //console.log(musexpr); console.log(" starttime: " + startTime + " seq");
+                    return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, self.endTime(startTime, musexpr.left)));
                 }
             }
         }(musexpr, 0);
