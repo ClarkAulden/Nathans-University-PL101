@@ -30,25 +30,6 @@ exports.MUS = function MUS() {
 
     /*compile MUS expressions to NOTE with par and rest*/
     self.compile = function (musexpr) {
-        // your code here
-
-        /*var noteArr = function(musexpr, startTime){
-            if(musexpr.tag === 'rest'){return []} //return nothing for rests, they only affect endtimes
-            if(musexpr.tag === 'note')
-            {
-                musexpr.start = startTime; //console.log(musexpr + "note");
-               return [].concat(musexpr);
-            }else
-            {
-                if(musexpr.tag ==='par'){
-                    //console.log(musexpr); console.log(" starttime: " + startTime + " par "); 
-                     return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, startTime));
-                }else{
-                    //console.log(musexpr); console.log(" starttime: " + startTime + " seq");
-                    return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, self.endTime(startTime, musexpr.left)));
-                }
-            }
-        }(musexpr, 0);*/
 
          var noteArr = function(musexpr, startTime){
             if(musexpr.tag === 'rest'){return []} //return nothing for rests, they only affect endtimes and starttimes
@@ -65,7 +46,7 @@ exports.MUS = function MUS() {
 
             if(musexpr.tag ==='seq'){
                 //console.log(musexpr); console.log(" starttime: " + startTime + musexpr.tag);
-                return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right, self.endTime(startTime, musexpr.left)));
+                return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right,  startTime + self.endTime(0, musexpr.left)));
             }
 
             if(musexpr.tag ==='repeat'){

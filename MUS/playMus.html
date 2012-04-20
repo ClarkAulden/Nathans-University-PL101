@@ -141,10 +141,14 @@
    }
 
    /*
-    For any parlel notes, avg their freqs while the notes overlap (probably won't sound good as harmony != freq avg)
-    and store freqs in the note intsead of spn.
+    For any parllel notes, avg their freqs while the notes overlap (probably won't sound good as harmony != freq avg)
+    and store freqs in addition to pitch.  
 
-    TODO?: support different notes on different channels
+    future plans for parallel notes: don't use avg freq, but use the avg amplitude of two notes at once, which makes a wobbly looking wave
+    which might sound more like two notes at once, this might be easier if the way that notes are processed into wav output uses the arrays
+    of overlapping notes directly, instead of the sort of flattened formattedNotes array.
+
+    TODO?: support notes on different channels
    */
    function reformatNotes_FreqAvgPerStartTimeForDuration(notes)
    {
@@ -220,8 +224,12 @@ console.log(formattedNotes); // methinks somewhere between here an the return th
         var lastNote = formattedNotes[0];
         var restsToInsert = [];
 
+        //Make sure the notes are in right order!
+        formattedNotes.sort(function(a,b){return a.start - b.start})
+
         for (var i = 1 ; i < origLength; i++) {
             if(formattedNotes[i].start != lastNote.start + lastNote.dur){
+
               restsToInsert.push({pos:i-1, dur: formattedNotes[i].start - (lastNote.start + lastNote.dur) , start: lastNote.start + lastNote.dur});
             }
             lastNote = formattedNotes[i];
@@ -272,7 +280,7 @@ console.log(formattedNotes); // methinks somewhere between here an the return th
       output+="data";
       output+=str_from_dword((SampleRate * lengthInSeconds) * NumChannels * (BitsPerSample /8) );//subchunk2 size
 
-      //TODO?: support different notes on different channels
+      //TODO?: support notes on different channels
       function writeNoteToOutput( output, noteReadyToBePlayed) 
       {
           for (var i = 0; i < SampleRate * (noteReadyToBePlayed.dur) ; i++)
@@ -307,7 +315,22 @@ console.log(formattedNotes); // methinks somewhere between here an the return th
             },
       right: {tag:'seq', 
               left:{ tag: 'repeat', section: { tag: 'rest', dur: 1000}, count:3 },
+              right:{tag: 'seq', 
+      left: { tag: 'seq',
+              left: { tag: 'par',
+                      left: { tag: 'note', pitch: 'c4', dur: 1000 },
+                      right: { tag: 'note', pitch: 'g5', dur: 500 } 
+                    },
+              right: { tag: 'par',
+                       left: { tag: 'note', pitch: 'd4', dur: 500 },
+                       right: { tag: 'note', pitch: 'f5', dur: 1000 } 
+                     } 
+            },
+      right: {tag:'seq', 
+              left:{ tag: 'repeat', section: { tag: 'rest', dur: 1000}, count:3 },
               right:{tag: 'note', pitch: 'c4', dur: 1000}
+             }
+    }
              }
     };
    </textarea>
