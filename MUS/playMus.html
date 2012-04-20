@@ -252,11 +252,11 @@
        eval( strExpr);
        var lengthInSeconds = GetTotalLengthInSeconds(MuseExpr); //endTime gives miliseconds
        var MuseNotes = musHelper.compile(MuseExpr); //not optimized/formatted for Paralel notes to actually be played
-       console.log(MuseNotes);
+       console.log("***Compiled Notes***");console.log(MuseNotes);
       
 
       var NotesReadyToBePlayed = reformatNotes_FreqAvgPerStartTimeForDuration(MuseNotes);
-      console.log(NotesReadyToBePlayed);
+      console.log("***Compiled Notes Ready To be played***");console.log(NotesReadyToBePlayed);
 
       //var freq = 2*document.getElementById("freq").value-0; //seems to need to be multiplied by 2 so other math might be off somewhere
       
