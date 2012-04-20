@@ -7,7 +7,6 @@ exports.MUS = function MUS() {
     var self = this;
     /*endtime with par and rest in mind*/
     self.endTime = function (time, expr) {
-        // your code here
         if(expr.tag === 'note' || expr.tag === 'rest')
         {return time + expr.dur;}
 
