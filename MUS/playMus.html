@@ -214,7 +214,8 @@
 
         }
 
-        //check startTimes for gaps indicating rests and insert the rest notes with a pitch of "r"
+console.log(formattedNotes); // methinks somewhere between here an the return there is a bug.
+        //check startTimes for gaps indicating rests and insert the rest notes 
         var origLength = formattedNotes.length;
         var lastNote = formattedNotes[0];
         var restsToInsert = [];
@@ -228,7 +229,7 @@
 
         for(var i = restsToInsert.length - 1; i >=0 ; i--) //insert in reverse order so we don't mess up the relative position
         {
-          formattedNotes.splice(restsToInsert[i].pos, 0 , {tag:'note', pitch:0, freq:0, start: restsToInsert[i].start, dur: restsToInsert[i].dur});
+          formattedNotes.splice(restsToInsert[i].pos+1, 0 , {tag:'note', pitch:0, freq:0, start: restsToInsert[i].start, dur: restsToInsert[i].dur});
         }
 
         //fix duration so it is in seconds;
@@ -251,33 +252,37 @@
       console.log(NotesReadyToBePlayed);
 
       //var freq = 2*document.getElementById("freq").value-0; //seems to need to be multiplied by 2 so other math might be off somewhere
+      
+      var NumChannels = 1;
+      var SampleRate = 44100;
+      var BitsPerSample = 16;
+
+
       var output = "RIFF"; //chunkID
-      output+=str_from_dword(88200*lengthInSeconds+36); //chunk size
+      output+=str_from_dword(((SampleRate * lengthInSeconds) * NumChannels * (BitsPerSample /8) )+36); //chunk size
       output+="WAVE"; //format
       output+="fmt "; //subchunkID
       output+=str_from_dword(16); //subchunk size
       output+=str_from_word(1); //Audio Format PCM=1
-      output+=str_from_word(2); //Num of Channels
-      output+=str_from_dword(44100); //Sample rate
-      output+=str_from_dword(88200); //Byte rate = SampleRate*NumChannels*BitsPerSample/8 (could be off)
-      output+=str_from_word(4); /* BlockAlign = NumChannels * BitsPerSample/8
-                               The number of bytes for one sample including
-                               all channels. (might also be off)*/ 
+      output+=str_from_word(NumChannels); 
+      output+=str_from_dword(SampleRate); 
+      output+=str_from_dword(SampleRate * NumChannels * (BitsPerSample / 8)); 
+      output+=str_from_word(NumChannels * (BitsPerSample/8)); //block align 
       output+=str_from_word(16);
       output+="data";
-      output+=str_from_dword(88200*lengthInSeconds);
+      output+=str_from_dword((SampleRate * lengthInSeconds) * NumChannels * (BitsPerSample /8) );//subchunk2 size
 
       //TODO?: support different notes on different channels
       function writeNoteToOutput( output, noteReadyToBePlayed) 
       {
-          for (var i = 0; i < 44100 * (noteReadyToBePlayed.dur) / 2; i++)
+          for (var i = 0; i < SampleRate * (noteReadyToBePlayed.dur) ; i++)
          {
-             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.freq * 2 /*pitch bug fix*/) * 32760)); 
-             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.freq * 2 /*pitch bug fix*/) * 32760));//interleave the channels?
-             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.freq * 2 /*pitch bug fix*/) * 32760)); 
-             output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.freq * 2 /*pitch bug fix*/) * 32760));
+            //output += str_from_word(Math.round(Math.cos(i / (88200) * 2 * Math.PI * noteReadyToBePlayed.freq  /*pitch bug fix*/) * 32760)); 
+            output += str_from_word( Math.round(32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (noteReadyToBePlayed.freq))));
          }
+         
          return output;
+
       }
 
       output += NotesReadyToBePlayed.reduce(writeNoteToOutput, output);
