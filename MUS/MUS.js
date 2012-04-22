@@ -34,8 +34,8 @@ exports.MUS = function MUS() {
             if(musexpr.tag === 'rest'){return []} //return nothing for rests, they only affect endtimes and starttimes
 
             if(musexpr.tag === 'note'){
-                musexpr.start = startTime; //console.log(musexpr + "note");
-               return [].concat(musexpr);
+                 //console.log(musexpr + "note");
+               return [{tag: 'note', start: startTime , pitch: musexpr.pitch , dur: musexpr.dur}];
             }
 
             if(musexpr.tag ==='par'){
@@ -48,11 +48,16 @@ exports.MUS = function MUS() {
                 return [].concat(arguments.callee(musexpr.left, startTime)).concat(arguments.callee(musexpr.right,  startTime + self.endTime(0, musexpr.left)));
             }
 
+
             if(musexpr.tag ==='repeat'){
                 //console.log(musexpr); console.log(" starttime: " + startTime + musexpr.tag);
                 var repeated = [] ;
+                var temp;
                 for (var i = 0 ; i <  musexpr.count -1 ; i++) {
-                    repeated.concat(arguments.callee(musexpr.section, startTime + (i*self.endTime(0, musexpr.section) ))) ;
+                    temp = arguments.callee(musexpr.section, startTime + (i*self.endTime(0, musexpr.section) ));
+                    //console.log(repeated, temp);
+                   repeated = repeated.concat(temp) ;
+                    console.log(repeated, temp);
                 }
                 
                 return repeated;
