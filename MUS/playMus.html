@@ -261,7 +261,7 @@
             for(var j = 0; j < noteExpr.length; j++ ){
               if((i/SampleRate)*1000 >= noteExpr[j].start && (i/SampleRate)*1000 < noteExpr[j].start + noteExpr[j].dur){
                 //avgAmp += (32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (getFreqFromMidi(noteExpr[j].pitch) )));
-                avgAmp = Math.round(32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (getFreqFromMidi(noteExpr[j].pitch))));
+                avgAmp += Math.round(32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (getFreqFromMidi(noteExpr[j].pitch))));
                 ampCount++;
               }
             }
