@@ -242,7 +242,40 @@
         //fix duration so it is in seconds;
         formattedNotes = formattedNotes.map(function (note) { note.dur = note.dur / 1000; return note; });
 
+
+
         return formattedNotes;
+   }
+
+   function altAudioProcess(noteExpr, SampleRate, lengthInSeconds){
+    var newOutput ="";
+    var oldOutput = ""
+    var avgAmp;
+    var ampCount;
+
+    for (var i = 0; i < SampleRate * (lengthInSeconds) ; i++)
+         {
+            avgAmp = 0;
+            ampCount = 0
+
+            for(var j = 0; j < noteExpr.length; j++ ){
+              if((i/SampleRate)*1000 >= noteExpr[j].start && (i/SampleRate)*1000 < noteExpr[j].start + noteExpr[j].dur){
+                //avgAmp += (32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (getFreqFromMidi(noteExpr[j].pitch) )));
+                avgAmp = Math.round(32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * (getFreqFromMidi(noteExpr[j].pitch))));
+                ampCount++;
+              }
+            }
+
+            if(ampCount > 0){
+              newOutput += str_from_word(  Math.round(avgAmp / ampCount));
+            }else{
+              newOutput +=str_from_word( Math.round(32760 * Math.sin((i/ SampleRate) * 2 * Math.PI * 0.0)));
+            }
+
+         }
+         
+
+    return newOutput
    }
 
    function genaudio()
@@ -255,8 +288,8 @@
        console.log("***Compiled Notes***");console.log(MuseNotes);
       
 
-      var NotesReadyToBePlayed = reformatNotes_FreqAvgPerStartTimeForDuration(MuseNotes);
-      console.log("***Compiled Notes Ready To be played***");console.log(NotesReadyToBePlayed);
+      //var NotesReadyToBePlayed = reformatNotes_FreqAvgPerStartTimeForDuration(MuseNotes);
+      //console.log("***Compiled Notes Ready To be played***");console.log(NotesReadyToBePlayed);
 
       //var freq = 2*document.getElementById("freq").value-0; //seems to need to be multiplied by 2 so other math might be off somewhere
       
@@ -292,9 +325,12 @@
 
       }
 
-      output += NotesReadyToBePlayed.reduce(writeNoteToOutput, output);
+      output += altAudioProcess(MuseNotes, SampleRate, lengthInSeconds);
+      //console.log(output);
+
       document.getElementById("audio").innerHTML=("<audio id=\"player\" src=\"data:audio/x-wav;base64,"+encode64(output)+"\">");
       document.getElementById("player").play();
+      
    }
    </script>
 </head>
